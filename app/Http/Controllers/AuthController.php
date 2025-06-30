@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
@@ -17,13 +18,25 @@ class AuthController extends Controller
             "password" => "required"
         ]);
 
-        User::create($data);
+        Try {
+           $user = User::create([
+            'name' => $data['name'],
+            'email' => strtolower($data['email']), 
+            'password' => Hash::make($data['password'])         
+           ]);
         
-        return response()->json([
-            "status" => true,
-            "message" => "User registered successfully"
-        ]);
-
+            return response()->json([
+                'status' => true,
+                'message' => 'User register successfully',
+                'data' => $user
+            ],201);
+        } catch(\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'failed to register',
+                'error' => $e->getMessage()
+            ],500);
+        }
     }
 
     //Login API (email, password)
@@ -34,16 +47,16 @@ class AuthController extends Controller
             "password" => "required"
         ]);
 
-        if(Auth::attempt($request->only("email", "password"))) {
+        if(!Auth::attempt($request->only("email", "password"))) {
             return response()->json([
                 "status" => false,
                 "message" => "Invalid credentials",
-            ]);
+            ],401);
         }
 
         $user = Auth::user();
 
-        $token = $user->createToken("myToken")->plaintextToken;
+        $token = $user->createToken("myToken")->plainTextToken;
 
         return response()->json([
             "status" => true,
